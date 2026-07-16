@@ -26,16 +26,29 @@ app.post('/webhook/audio', upload.single('file'), (req, res) => {
     processAudio(req.file.buffer, req.file.originalname, req.file.mimetype, location).catch(console.error);
 });
 
-async function processAudio(fileBuffer, filename, mimetype, location) {
+async function processAudio(fileBuffer, originalFilename, mimetype, location) {
     try {
         const requestHeaders = { 'Authorization': `Bearer ${MEMOS_TOKEN}` };
 
+        const now = new Date();
+        
+        const extIndex = originalFilename.lastIndexOf('.');
+        const ext = extIndex !== -1 ? originalFilename.substring(extIndex) : '.m4a';
+
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const sec = String(now.getSeconds()).padStart(2, '0');
+        const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+        const timeBasedFilename = `${hh}-${min}-${sec}-${ms}${ext}`;
+
         const formData = new FormData();
         const blob = new Blob([fileBuffer], { type: mimetype || 'audio/mpeg' }); 
-        formData.append('file', blob, filename);
+        
+        formData.append('file', blob, timeBasedFilename);
         formData.append('model', 'systran/faster-whisper-small');
 
-        console.log('Transcribing audio...');
+        console.log(`Transcribing audio: ${timeBasedFilename}...`);
         const whisperRes = await fetch(WHISPER_URL, { method: 'POST', body: formData });
 
         if (!whisperRes.ok) throw new Error(`Whisper failed: ${whisperRes.status}`);
@@ -47,7 +60,6 @@ async function processAudio(fileBuffer, filename, mimetype, location) {
             return;
         }
 
-        const now = new Date();
         const logicalDate = new Date(now.getTime() - (3 * 60 * 60 * 1000)); // 3 AM Cutoff
         
         const days = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
@@ -58,8 +70,6 @@ async function processAudio(fileBuffer, filename, mimetype, location) {
         const targetTitle = `# ${titleDateStr}`;
         const targetHeader = `#jurnal\n${targetTitle}`;
 
-        const hh = String(now.getHours()).padStart(2, '0');
-        const min = String(now.getMinutes()).padStart(2, '0');
         const newEntry = `### [${hh}:${min}]\n${transcription}`;
 
         let attachmentMeta = null;
@@ -75,7 +85,7 @@ async function processAudio(fileBuffer, filename, mimetype, location) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    filename: filename,
+                    filename: timeBasedFilename,
                     type: mimetype || 'audio/mpeg',
                     content: base64Content
                 })
@@ -87,7 +97,6 @@ async function processAudio(fileBuffer, filename, mimetype, location) {
             }
             
             const resourceData = await uploadRes.json();
-            
             attachmentMeta = { name: resourceData.name };
             console.log(`Audio uploaded successfully: ${resourceData.name}`);
             
