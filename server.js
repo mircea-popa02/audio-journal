@@ -163,7 +163,7 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         const memosDashboardUrl = MEMOS_BASE_API.replace('/api/v1', '');
 
         try {
-            await fetch('http://homelab-hp:8448/' + ntfyTopic, {
+            await fetch('http://ntfy:8448/' + ntfyTopic, {
                 method: 'POST',
                 body: 'New entry was processed and saved successfully',
                 headers: {
