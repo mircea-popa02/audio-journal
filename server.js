@@ -159,9 +159,23 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         if (!upsertRes.ok) throw new Error(`Memos ${method} failed: ${upsertRes.status} ${await upsertRes.text()}`);
         console.log('Successfully updated Memos.');
 
-    } catch (error) {
-        console.error('Pipeline error:', error);
-    }
+    const ntfyTopic = 'audio_journal';
+        const memosDashboardUrl = MEMOS_BASE_API.replace('/api/v1', ''); 
+
+        try {
+            await fetch('http://ntfy:80/' + ntfyTopic, {
+                method: 'POST',
+                body: 'Nota a fost procesată și salvată cu succes.',
+                headers: {
+                    'Title': 'Audio Journal',
+                    'Tags': 'microphone,memo', // Adaugă iconițe
+                    'Click': memosDashboardUrl // Când apeși pe notificare, te duce în Memos
+                }
+            });
+            console.log('Internal push notification triggered.');
+        } catch (ntfyErr) {
+            console.error('Failed to trigger push notification:', ntfyErr);
+        }
 }
 
 const PORT = process.env.PORT || 3000;
