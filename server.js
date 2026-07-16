@@ -11,7 +11,7 @@ const MEMOS_TOKEN = process.env.MEMOS_TOKEN || 'memos_pat_Af3l9tZLEDrpulkYt1c9Hp
 
 const MEMOS_BASE_API = MEMOS_API_URL.replace(/\/memos\/?$/, '');
 
-app.post('/webhook/audio', upload.single('file'), (req, res) => {
+app.post('/webhook/audio-journal', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No audio file provided.' });
     }
