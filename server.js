@@ -6,6 +6,7 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
 const WHISPER_URL = process.env.WHISPER_URL || 'http://homelab-hp:8000/v1/audio/transcriptions';
+const WHISPER_MODEL = process.env.WHISPER_MODEL || 'deepdml/faster-whisper-large-v3-turbo-ct2';
 const MEMOS_API_URL = process.env.MEMOS_API_URL || 'http://memos:5230/api/v1/memos';
 const MEMOS_TOKEN = process.env.MEMOS_TOKEN || 'memos_pat_Af3l9tZLEDrpulkYt1c9HpuzPlSADKU3';
 
@@ -46,9 +47,10 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         const blob = new Blob([fileBuffer], { type: mimetype || 'audio/mpeg' }); 
         
         formData.append('file', blob, timeBasedFilename);
-        formData.append('model', 'systran/faster-whisper-small');
+        
+        formData.append('model', WHISPER_MODEL); 
 
-        console.log(`Transcribing audio: ${timeBasedFilename}...`);
+        console.log(`Transcribing audio: ${timeBasedFilename} using ${WHISPER_MODEL}...`);
         const whisperRes = await fetch(WHISPER_URL, { method: 'POST', body: formData });
 
         if (!whisperRes.ok) throw new Error(`Whisper failed: ${whisperRes.status}`);
