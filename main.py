@@ -8,7 +8,7 @@ app = FastAPI()
 # Point these to your internal Docker service hostnames
 WHISPER_URL = os.getenv("WHISPER_URL", "http://whisper:9000/asr")
 MEMOS_URL = os.getenv("MEMOS_URL", "http://memos:5230/api/v1/memo")
-MEMOS_TOKEN = os.getenv("MEMOS_TOKEN", "your_api_token_here")
+MEMOS_TOKEN = os.getenv("MEMOS_TOKEN", "memos_pat_Af3l9tZLEDrpulkYt1c9HpuzPlSADKU3")
 
 async def process_and_upload_journal_memo(file_bytes: bytes, filename: str):
     """
