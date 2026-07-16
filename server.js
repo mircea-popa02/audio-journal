@@ -163,9 +163,9 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         const memosDashboardUrl = MEMOS_BASE_API.replace('/api/v1', '');
 
         try {
-            await fetch('http://ntfy:80/' + ntfyTopic, {
+            await fetch('http://homelab-hp:8448/' + ntfyTopic, {
                 method: 'POST',
-                body: 'Nota a fost procesată și salvată cu succes.',
+                body: 'New entry was processed and saved successfully',
                 headers: {
                     'Title': 'Audio Journal',
                     'Tags': 'microphone,memo', // Adaugă iconițe
