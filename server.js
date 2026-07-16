@@ -23,7 +23,7 @@ app.post('/webhook/audio-journal', upload.single('file'), (req, res) => {
     const location = (lat && lon) ? { placeholder: "Audio Location", latitude: lat, longitude: lon } : undefined;
 
     res.status(202).json({ message: 'Audio accepted. Processing in background.' });
-    
+
     processAudio(req.file.buffer, req.file.originalname, req.file.mimetype, location).catch(console.error);
 });
 
@@ -32,7 +32,7 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         const requestHeaders = { 'Authorization': `Bearer ${MEMOS_TOKEN}` };
 
         const now = new Date();
-        
+
         const extIndex = originalFilename.lastIndexOf('.');
         const ext = extIndex !== -1 ? originalFilename.substring(extIndex) : '.m4a';
 
@@ -44,11 +44,11 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         const timeBasedFilename = `${hh}-${min}-${sec}-${ms}${ext}`;
 
         const formData = new FormData();
-        const blob = new Blob([fileBuffer], { type: mimetype || 'audio/mpeg' }); 
-        
+        const blob = new Blob([fileBuffer], { type: mimetype || 'audio/mpeg' });
+
         formData.append('file', blob, timeBasedFilename);
-        
-        formData.append('model', WHISPER_MODEL); 
+
+        formData.append('model', WHISPER_MODEL);
 
         console.log(`Transcribing audio: ${timeBasedFilename} using ${WHISPER_MODEL}...`);
         const whisperRes = await fetch(WHISPER_URL, { method: 'POST', body: formData });
@@ -56,19 +56,19 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         if (!whisperRes.ok) throw new Error(`Whisper failed: ${whisperRes.status}`);
         const whisperData = await whisperRes.json();
         const transcription = whisperData.text ? whisperData.text.trim() : '';
-        
+
         if (!transcription) {
             console.log('Transcription empty, skipping memo update.');
             return;
         }
 
         const logicalDate = new Date(now.getTime() - (3 * 60 * 60 * 1000)); // 3 AM Cutoff
-        
+
         const days = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
         const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
-        
+
         const titleDateStr = `${days[logicalDate.getDay()]} ${logicalDate.getDate()} ${months[logicalDate.getMonth()]} ${logicalDate.getFullYear()}`;
-        
+
         const targetTitle = `# ${titleDateStr}`;
         const targetHeader = `#jurnal\n${targetTitle}`;
 
@@ -77,9 +77,9 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         let attachmentMeta = null;
         try {
             console.log('Uploading audio attachment to Memos...');
-            
+
             const base64Content = fileBuffer.toString('base64');
-            
+
             const uploadRes = await fetch(`${MEMOS_BASE_API}/attachments`, {
                 method: 'POST',
                 headers: {
@@ -92,16 +92,16 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
                     content: base64Content
                 })
             });
-            
+
             if (!uploadRes.ok) {
                 const errText = await uploadRes.text();
                 throw new Error(`${uploadRes.status} ${errText}`);
             }
-            
+
             const resourceData = await uploadRes.json();
             attachmentMeta = { name: resourceData.name };
             console.log(`Audio uploaded successfully: ${resourceData.name}`);
-            
+
         } catch (uploadErr) {
             console.error('ERROR: Attachment upload failed. The text will still be saved.', uploadErr);
         }
@@ -109,7 +109,7 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         console.log(`Checking for existing memo: ${targetTitle}`);
         const listRes = await fetch(`${MEMOS_API_URL}?pageSize=20`, { headers: requestHeaders });
         if (!listRes.ok) throw new Error(`Memos list failed: ${listRes.status}`);
-        
+
         const listData = await listRes.json();
         const existingMemo = (listData.memos || []).find(m => m.content && m.content.includes(targetTitle));
 
@@ -122,21 +122,21 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
 
         if (existingMemo) {
             finalContent = `${existingMemo.content}\n\n${newEntry}`;
-            
+
             finalAttachments = (existingMemo.attachments || []).map(a => ({ name: a.name }));
             if (attachmentMeta) finalAttachments.push(attachmentMeta);
-            
+
             if (!finalLocation && existingMemo.location) {
                 finalLocation = existingMemo.location;
             }
 
             method = 'PATCH';
             targetUrl = `${MEMOS_BASE_API}/${existingMemo.name}`;
-            
+
             updateMask = ['content', 'attachments'];
             if (finalLocation) updateMask.push('location');
             targetUrl += `?updateMask=${updateMask.join(',')}`;
-            
+
             console.log(`Appending to existing memo: ${existingMemo.name}`);
         } else {
             finalContent = `${targetHeader}\n\n${newEntry}`;
@@ -144,9 +144,9 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
             console.log('Creating new daily memo...');
         }
 
-        const payload = { 
+        const payload = {
             content: finalContent,
-            attachments: finalAttachments 
+            attachments: finalAttachments
         };
         if (finalLocation) payload.location = finalLocation;
 
@@ -155,12 +155,12 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
             headers: { ...requestHeaders, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-            
+
         if (!upsertRes.ok) throw new Error(`Memos ${method} failed: ${upsertRes.status} ${await upsertRes.text()}`);
         console.log('Successfully updated Memos.');
 
-    const ntfyTopic = 'audio_journal';
-        const memosDashboardUrl = MEMOS_BASE_API.replace('/api/v1', ''); 
+        const ntfyTopic = 'audio_journal';
+        const memosDashboardUrl = MEMOS_BASE_API.replace('/api/v1', '');
 
         try {
             await fetch('http://ntfy:80/' + ntfyTopic, {
@@ -176,6 +176,10 @@ async function processAudio(fileBuffer, originalFilename, mimetype, location) {
         } catch (ntfyErr) {
             console.error('Failed to trigger push notification:', ntfyErr);
         }
+
+    } catch (err) {
+        console.error('ERROR: Failed to process audio journal entry.', err);
+    }
 }
 
 const PORT = process.env.PORT || 3000;
