@@ -1,13 +1,7 @@
-FROM python:3.11-slim
-
+FROM node:20-alpine
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY main.py .
-
-EXPOSE 8000
-
-# Run the Uvicorn ASGI server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY package*.json ./
+RUN npm install --production
+COPY server.js .
+EXPOSE 3000
+CMD ["node", "server.js"]
